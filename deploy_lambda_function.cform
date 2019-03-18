@@ -1,0 +1,358 @@
+{
+    "Description": "Deploys pre-requisites for rotating IAM credentials utilized by Rubrik Cloud Native Protection",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Lambda Function Source Parameters"
+                    },
+                    "Parameters": [
+                        "lambdaBucketName",
+                        "lambdaZipName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Lambda Execution VPC Parameters"
+                    },
+                    "Parameters": [
+                        "lambdaVpcId",
+                        "lambdaSubnet1",
+                        "lambdaSubnet2",
+                        "lambdaSecurityGroup"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Rubrik Specific Parameters"
+                    },
+                    "Parameters": [
+                        "localRubrikIAMUser",
+                        "RubrikCDMHostname",
+                        "RubrikCDMUsername",
+                        "RubrikSecretKMSKey"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "lambdaBucketName": {
+            "Description": "Name of the bucket containing the lambda zip file, must be in the region you are creating this stack in",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        },
+        "lambdaZipName": {
+            "Description": "Full name of the lambda zip file in lambdaBucketName",
+            "Type": "String",
+            "Default": "rk_secret_rotator.zip",
+            "AllowedPattern": ".+"
+        },
+        "lambdaVpcId": {
+            "Description": "Name for the VPC that lambda will execute in.",
+            "Type": "AWS::EC2::VPC::Id",
+            "ConstraintDescription": "Must be the id of an existing VPC"
+        },
+        "lambdaSubnet1": {
+            "Description": "id of first subnet that lambda function will execute in",
+            "Type": "AWS::EC2::Subnet::Id",
+            "ConstraintDescription": "Must be the id of an existing subnet"
+        },
+        "lambdaSubnet2": {
+            "Description": "id of second subnet that lambda function will execute in.",
+            "Type": "AWS::EC2::Subnet::Id",
+            "ConstraintDescription": "Must be the id of an existing subnet"
+        },
+        "lambdaSecurityGroup": {
+            "Description": "id of the security group assigned to lambda when executing in lambdaVPC.",
+            "Type": "AWS::EC2::SecurityGroup::Id",
+            "ConstraintDescription": "Must be the id of an existing security group"
+        },
+        "localRubrikIAMUser": {
+            "Description": "Name of the Rubrik IAM user for THIS AWS account",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        },
+        "RubrikCDMHostname": {
+            "Description": "Hostname or IP address of Rubrik cluster, must be accessible from selected lambdaVpcId",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        },
+        "RubrikCDMUsername": {
+            "Description": "Username to use when accessing Rubrik, password specified in Secrets Manager manually",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        },
+        "RubrikSecretKMSKey": {
+            "Description": "ARN of the KMS key used to encrypt Rubrik CDM credentials in Secrets Manager",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        }
+    },
+    "Resources": {
+        "rubrikEc2SecretRotatorPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "secretsmanager:DescribeSecret",
+                                "secretsmanager:GetSecretValue",
+                                "secretsmanager:PutSecretValue",
+                                "secretsmanager:UpdateSecretVersionStage"
+                            ],
+                            "Resource": {
+                                "Fn::Join": [
+                                    ":",
+                                    [
+                                        "arn:aws:secretsmanager",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        },
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        "secret:/rubrik/*"
+                                    ]
+                                ]
+                            },
+                            "Condition": {
+                                "StringEquals": {
+                                    "secretsmanager:resource/AllowRotationLambdaArn": {
+                                        "Fn::Join": [
+                                            ":",
+                                            [
+                                                "arn:aws:lambda",
+                                                {
+                                                    "Ref": "AWS::Region"
+                                                },
+                                                {
+                                                    "Ref": "AWS::AccountId"
+                                                },
+                                                "function:rubrikEc2SecretRotator"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "secretsmanager:DescribeSecret",
+                                "secretsmanager:GetSecretValue",
+                                "secretsmanager:PutSecretValue",
+                                "secretsmanager:UpdateSecretVersionStage"
+                            ],
+                            "Resource": {
+                                "Fn::Join": [
+                                    ":",
+                                    [
+                                        "arn:aws:secretsmanager",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        },
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        "secret:/rubrik/rubrik_cdm_credentials*"
+                                    ]
+                                ]
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "secretsmanager:GetRandomPassword"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": [
+                                "ec2:CreateNetworkInterface",
+                                "ec2:DeleteNetworkInterface",
+                                "ec2:DescribeNetworkInterfaces"
+                            ],
+                            "Resource": "*",
+                            "Effect": "Allow"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:*AccessKey*"
+                            ],
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:iam::",
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        ":user/",
+                                        {
+                                            "Ref": "localRubrikIAMUser"
+                                        }
+                                    ]
+                                ]
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:ListAccount*",
+                                "iam:GetAccountSummary",
+                                "iam:GetAccountPasswordPolicy",
+                                "iam:ListUsers"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "sts:AssumeRole",
+                            "Resource": "arn:aws:iam::*:role/rubrikEc2SecretRotatorRole"
+                        }
+                    ]
+                },
+                "PolicyName": "rubrikEc2SecretRotatorPolicy",
+                "Roles": [
+                    {
+                        "Ref": "rubrikEc2SecretRotatorRole"
+                    }
+                ]
+            }
+        },
+        "rubrikEc2SecretRotatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [],
+                "RoleName": "rubrikEc2SecretRotatorRole"
+            }
+        },
+        "rubrikec2tagfunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": "rubrikEc2SecretRotatorPolicy",
+            "Properties": {
+                "Handler": "lambda_function.lambda_handler",
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "lambdaBucketName"
+                    },
+                    "S3Key": {
+                        "Ref": "lambdaZipName"
+                    }
+                },
+                "Description": "Lambda function used by AWS Secrets Manager to rotate EC2 Native Protection credentials",
+                "FunctionName": "rubrikEc2SecretRotator",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "rubrikEc2SecretRotatorRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": "180",
+                "VpcConfig": {
+                    "SecurityGroupIds": [
+                        {
+                            "Ref": "lambdaSecurityGroup"
+                        }
+                    ],
+                    "SubnetIds": [
+                        {
+                            "Ref": "lambdaSubnet1"
+                        },
+                        {
+                            "Ref": "lambdaSubnet2"
+                        }
+                    ]
+                }
+            }
+        },
+        "LambdaInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "rubrikec2tagfunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "secretsmanager.amazonaws.com"
+            }
+        },
+        "rubrikCDMSecret": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "Name": "/rubrik/rubrik_cdm_credentials",
+                "Description": "Credentials used to access Rubrik CDM via Secrets Manager and Lambda for key rotation purposes",
+                "SecretString": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "{\"rubrikhost\":\"",
+                            {
+                                "Ref": "RubrikCDMHostname"
+                            },
+                            "\",\"rubrikuser\":\"",
+                            {
+                                "Ref": "RubrikCDMUsername"
+                            },
+                            "\",\"rubrikpassword\":\"",
+                            "\"}"
+                        ]
+                    ]
+                },
+                "KmsKeyId": {
+                    "Ref": "RubrikSecretKMSKey"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "rubrikEc2SecretRotatorRoleARN": {
+            "Description": "ARN of IAM role used by Lambda",
+            "Value": {
+                "Fn::GetAtt": [
+                    "rubrikEc2SecretRotatorRole",
+                    "Arn"
+                ]
+            }
+        },
+        "rubrikec2tagfunctionARN": {
+            "Description": "ARN of the Lambda function used to rotate EC2 native protection credentials",
+            "Value": {
+                "Fn::GetAtt": [
+                    "rubrikec2tagfunction",
+                    "Arn"
+                ]
+            }
+        }
+    }
+}

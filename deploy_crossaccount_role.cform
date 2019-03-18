@@ -1,0 +1,194 @@
+{
+    "Description": "Deploys Rubrik IAM user, role, and policies necessary to enable EC2 native protection with Secrets Manager driven key rotation",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "IAM Parameters"
+                    },
+                    "Parameters": [
+                        "IAMusername",
+                        "SourceAccount"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "IAMusername": {
+            "Description": "Name of the Rubrik IAM user to be provisioned in this account",
+            "Type": "String",
+            "Default": "rubrikEc2ProtectionUser",
+            "AllowedPattern": ".+"
+        },
+        "SourceAccount": {
+            "Description": "Account number of the source account for key rotation",
+            "Type": "String",
+            "AllowedPattern": ".+"
+        }
+    },
+    "Resources": {
+        "rubrikEc2SecretRotatorPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:*AccessKey*"
+                            ],
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:iam::",
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        ":user/",
+                                        {
+                                            "Ref": "IAMusername"
+                                        }
+                                    ]
+                                ]
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "iam:ListAccount*",
+                                "iam:GetAccountSummary",
+                                "iam:GetAccountPasswordPolicy",
+                                "iam:ListUsers"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "PolicyName": "rubrikEc2SecretRotatorPolicy",
+                "Roles": [
+                    {
+                        "Ref": "rubrikEc2SecretRotatorRole"
+                    }
+                ]
+            }
+        },
+        "rubrikEc2ProtectionPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "RubrikCloudNative",
+                            "Effect": "Allow",
+                            "Action": [
+                                "ec2:AttachVolume",
+                                "ec2:CopyImage",
+                                "ec2:CreateImage",
+                                "ec2:CreateTags",
+                                "ec2:CreateVolume",
+                                "ec2:DeleteKeyPair",
+                                "ec2:DeleteSnapshot",
+                                "ec2:DeleteVolume",
+                                "ec2:DeregisterImage",
+                                "ec2:DescribeAvailabilityZones",
+                                "ec2:DescribeImages",
+                                "ec2:DescribeImportImageTasks",
+                                "ec2:DescribeInstances",
+                                "ec2:DescribeKeyPairs",
+                                "ec2:DescribeSecurityGroups",
+                                "ec2:DescribeSnapshots",
+                                "ec2:DescribeSubnets",
+                                "ec2:DescribeVolumes",
+                                "ec2:DescribeVpcs",
+                                "ec2:DetachVolume",
+                                "ec2:ImportImage",
+                                "ec2:ModifyInstanceAttribute",
+                                "ec2:RunInstances",
+                                "ec2:StartInstances",
+                                "ec2:StopInstances",
+                                "ec2:TerminateInstances",
+                                "kms:Decrypt",
+                                "kms:Encrypt",
+                                "kms:GenerateDataKey",
+                                "kms:ReEncryptTo",
+                                "kms:DescribeKey",
+                                "kms:CreateGrant",
+                                "kms:ReEncryptFrom"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "PolicyName": "rubrikEc2ProtectionPolicy",
+                "Users": [
+                    {
+                        "Ref": "rubrikEc2ProtectionUser"
+                    }
+                ]
+            }
+        },
+        "rubrikEc2SecretRotatorRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "rubrikEc2SecretRotatorRole",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:iam::",
+                                            {
+                                                "Ref": "SourceAccount"
+                                            },
+                                            ":root"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "Action": "sts:AssumeRole",
+                            "Condition": {}
+                        }
+                    ]
+                }
+            }
+        },
+        "rubrikEc2ProtectionUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "UserName": {
+                    "Ref": "IAMusername"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "rubrikEc2SecretRotatorRoleARN": {
+            "Description": "ARN of IAM role used to rotate credentials on Rubrik IAM User",
+            "Value": {
+                "Fn::GetAtt": [
+                    "rubrikEc2SecretRotatorRole",
+                    "Arn"
+                ]
+            }
+        },
+        "rubrikEc2ProtectionUserARN": {
+            "Description": "ARN of IAM user used for Rubrik EC2 Native Protection",
+            "Value": {
+                "Fn::GetAtt": [
+                    "rubrikEc2ProtectionUser",
+                    "Arn"
+                ]
+            }
+        }
+    }
+}
