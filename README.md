@@ -1,5 +1,7 @@
 # AWS Secrets Manager Key Rotation for Rubrik Native Protection 
 
+Rubrik’s API first architecture enables organizations to embrace and integrate Rubrik functionality into their existing automation processes. Many AWS consumers prefer to manage the rotation secrets via the AWS Secrets Manager service. This solution is designed to allow customers to quickly deploy an architecture that provides IAM credential rotation for Rubrik EC2 Native protection across multiple AWS accounts.
+
 ## :blue_book: Documentation
 
 Here are some resources to get you started! If you find any challenges from this project are not properly documented or are unclear, please [raise an issue](https://github.com/rubrikinc/aws-native-secrets-rotation/issues/new/choose) and let us know! This is a fun, safe environment - don't worry if you're a GitHub newbie! :heart:
