@@ -17,7 +17,7 @@
     },
     "Parameters": {
         "IAMusername": {
-            "Description": "Name of the Rubrik IAM user for to be provisioned in this account",
+            "Description": "Name of the Rubrik IAM user to be provisioned in this account",
             "Type": "String",
             "Default": "rubrikEc2ProtectionUser",
             "AllowedPattern": ".+"
