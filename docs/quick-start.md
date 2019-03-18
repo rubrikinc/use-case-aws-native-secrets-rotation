@@ -116,3 +116,16 @@ iamsecretkey | Secret key currently used to by iamuser (created in step 4) | th1
 6. Click Next
 
 ![image](https://user-images.githubusercontent.com/16825470/54560737-6253e500-4999-11e9-9129-df0d5c72c401.png)
+
+7. Enter your desired name for the secret
+8. Enter your desired descroption for the secret
+9. Click Next
+
+![image](https://user-images.githubusercontent.com/16825470/54561557-4bae8d80-499b-11e9-8b7f-b88d472edbe5.png)
+
+10. Select Enable automatic rotation
+11. Set the rotation interval to your desired value
+12. Select the lambda function deployed by deploy_lambda_function.cform
+13. Click Next, then click Store on the following screen. This should initiate rotation on your secret immediately, see CloudWatch Logs for detail on success or failure.
+
+![image](https://user-images.githubusercontent.com/16825470/54561773-caa3c600-499b-11e9-9bef-b4dfe4640ae6.png)
