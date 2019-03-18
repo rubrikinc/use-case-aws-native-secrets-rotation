@@ -1,4 +1,4 @@
-# aws-native-secrets-rotation
+# Rotate Rubrik EC2 native protection AWS credentials using secrets manager
 
 ## :blue_book: Documentation
 
