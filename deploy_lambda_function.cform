@@ -223,7 +223,7 @@
                         {
                             "Effect": "Allow",
                             "Action": "sts:AssumeRole",
-                            "Resource": "arn:aws:iam::*:role/rubrik_ec2_crossaccount_role"
+                            "Resource": "arn:aws:iam::*:role/rubrikEc2SecretRotatorRole"
                         }
                     ]
                 },
