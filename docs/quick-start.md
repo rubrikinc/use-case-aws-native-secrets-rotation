@@ -14,7 +14,7 @@ with a "Hub" account that that contains the rotation logic for all "Spoke" accou
 1. Deploy the rotation logic and IAM assets into your hub account using deploy_lambda_function.cform  
 2. Deploy the IAM assets into your spoke accounts using deploy_crossaccount_role.cform
 3. Create IAM access keys for each IAM user
-4. Add cloud native sources to Rubrik for each spoke account
+4. Add cloud native sources to Rubrik for each AWS account
 5. Create secrets for each AWS account in AWS Secrets Manager as documented, validate rotation works properly
 
 ## 1. Deploy the rotation logic and IAM assets into your hub account using deploy_lambda_function.cform 
@@ -48,6 +48,8 @@ RubrikCDMHostname | Hostname or IP address of the Rubrik cluster we will be rota
 RubrikCDMUsername | Username used to connect to the Rubrik API.
 RubrikSecretKMSKey | KMS Key ARN that will be used to encrypt the Rubrik CDM credentials in secrets manager.
 
+### deploy_lambda_function.cform produces the following outputs:
+
 #### Stack Outputs
 Output | Description
 ------------ | -------------
@@ -60,4 +62,57 @@ in secrets manager. Simply browse to the newly created secret inside of the Secr
 
 ![image](https://user-images.githubusercontent.com/16825470/54553076-cec5e880-4987-11e9-91ab-a9d95dc40d38.png)
 
-## 1. Deploy the rotation logic and IAM assets into your hub account using deploy_lambda_function.cform 
+## 2. Deploy the IAM assets into your spoke accounts using deploy_crossaccount_role.cform
+Using deploy_crossaccount_role.cform, deploy a CloudFormation Stack into the desired region in each of your spoke account accounts. This stack will create all of the necessary IAM assets for protecting the spoke account with Rubrik EC2 Native protection as well rotating the IAM user's credentials via Secrets Manager from the hub account.
+
+### deploy_crossaccount_role.cform takes the following parameters:
+#### IAM Parameters
+Parameter | Description
+------------ | -------------
+IAMusername | Name of the Rubrik IAM user for to be provisioned in this account
+SourceAccount | Account number of the source account for key rotation (hub account)
+
+### deploy_crossaccount_role.cform produces the following outputs:
+
+#### Stack Outputs
+Output | Description
+------------ | -------------
+rubrikEc2SecretRotatorRoleARN | ARN of IAM role used to rotate credentials on Rubrik IAM User
+rubrikEc2ProtectionUserARN | ARN of IAM user used for Rubrik EC2 Native Protection
+
+## 3. Create IAM access keys for each hub and spoke IAM user
+Using the AWS console, or the following AWS CLI command: _aws iam create-access-key --user-name username_ create access keys for each of the IAM users that will be used for EC2 native protection via Rubrik. By default, this will be **rubrikEc2ProtectionUser** in your spoke accounts and will be the user you specified in the **localRubrikIAMUser** parameter in Step 1. Store these keys in a secure location for use in the next step.
+
+## 4. Add cloud native sources to Rubrik for each AWS account
+1. Log in to Rubrik
+2. Click on the settings/gear icon in the top right hand corner of the Rubrik console
+3. Choose Cloud Sources
+4. Click the plus sign to add a cloud source
+5. Enter the access key and secret key for the AWS account you are protecting
+6. Select the regions you wish to protect
+7. Configure file level indexing (if applicable)
+8. Click Add
+9. Validate that the Cloud Source successfully refreshes and enters a connected state
+10. Repeat for each AWS account that Rubrik will be protecting
+
+## 5. Create secrets for each AWS account in AWS Secrets Manager as documented, validate rotation works properly
+Once you have the Cloud Sources added to Rubrik, we can configure rotation via secrets manager. The simplest way to accomplish this is using secret templates in this repo. Examples for the [Hub Account Secret](../local_account_secret_example.json) and for the [Spoke Account Secrets](../assumerole_cross_account_secret_example.json) are available in this repo. 
+
+### Each Secret Consists of the following parameters:
+Paramter | Description | Example Value
+----------| ------------------------------------------------------|-------------
+accountid |  Account number of the AWS account we are protecting. | 123456789012
+rolearn (spoke only) |  ARN of the role created in the spoke account for rotation, available as output rubrikEc2SecretRotatorRoleARN from deploy_crossaccount_role.cform | arn:aws:iam::123456789012:role/rubrik_ec2_crossaccount_role
+iamuser | Name of the IAM user used to protect this AWS account | example-username
+iamaccesskey| Access key currently used to by iamuser (created in step 4, must match cloud source in rubrik or rotation will fail) | ABCDEFGHIJKLMNOPQRST
+iamsecretkey | Secret key currently used to by iamuser (created in step 4) | th1s1sAn3xampl3k3yfR0MAWS
+
+### Execute the following steps for each of your protected AWS accounts in the hub account to enable and test rotation
+1. In the hub account, select store a new secret in Secrets Manager
+2. Select other types of secrets and toggle the view to plaintext
+3. Paste in the appropriate template from this repo (Hub/Spoke)
+4. Update the values to correspond to the AWS account you are protecting
+5. Choose the appropriate KMS key to encrypt your secret
+6. Click Next
+
+![image](https://user-images.githubusercontent.com/16825470/54560737-6253e500-4999-11e9-9129-df0d5c72c401.png)
