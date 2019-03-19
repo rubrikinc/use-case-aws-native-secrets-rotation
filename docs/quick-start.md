@@ -1,16 +1,14 @@
 # Quick Start Guide: AWS Secrets Manager Key Rotation for Rubrik Native Protection
 
-## Introduction: AWS Secrets Manager Key Rotation for Rubrik Native Protection
-Rubrik’s API first architecture enables organizations to embrace and integrate Rubrik functionality into their 
-existing automation processes. Many AWS consumers prefer to manage the rotation secrets via the AWS Secrets Manager service.
-This solution is designed to allow customers to quickly deploy an architecture that provides IAM credential rotation for 
-Rubrik EC2 Native protection across multiple AWS accounts. The diagram below logically describes a fully deployed deployed environment
-with a "Hub" account that that contains the rotation logic for all "Spoke" accounts protected by Rubrik.
+Rubrik’s API first architecture enables organizations to embrace and integrate Rubrik functionality into their existing automation processes. Many AWS consumers prefer to manage the rotation secrets via the AWS Secrets Manager service.
+
+This solution is designed to allow customers to quickly deploy an architecture that provides IAM credential rotation for  Rubrik EC2 Native protection across multiple AWS accounts. The diagram below logically describes a fully deployed deployed environment with a "Hub" account that that contains the rotation logic for all "Spoke" accounts protected by Rubrik.
 
 
 ![image](https://user-images.githubusercontent.com/16825470/54544748-a2ee3700-4976-11e9-9594-d63569fe3b4b.png)
 
-### Deployment of the solution consists of the following steps, which are covered in more detail in the sections below:
+Deployment of the solution consists of the following steps, which are covered in more detail in the sections below:
+
 1. Deploy the rotation logic and IAM assets into your hub account using `deploy_lambda_function.cform` 
 2. Deploy the IAM assets into your spoke accounts using `deploy_crossaccount_role.cform`
 3. Create IAM access keys for each IAM user
@@ -19,12 +17,10 @@ with a "Hub" account that that contains the rotation logic for all "Spoke" accou
 
 ## 1. Deploy the rotation logic and IAM assets into your hub account using `deploy_lambda_function.cform`
 
-Using `deploy_lambda_function.cform`, deploy a CloudFormation Stack into the desired region in your hub account. You will 
-need to download the latest `rk_secret_rotator.zip` from the [releases section of this repository](https://github.com/rubrikinc/aws-native-secrets-rotation/releases) and place it in an S3 
-bucket in the same region where you will be deploying this stack. Typically this soluton will be deployed into some sort of 
-shared services environment as connectivity back to the Rubrik is required.
+Using `deploy_lambda_function.cform`, deploy a CloudFormation Stack into the desired region in your hub account. You will need to download the latest `rk_secret_rotator.zip` from the [releases section of this repository](https://github.com/rubrikinc/aws-native-secrets-rotation/releases) and place it in an S3 
+bucket in the same region where you will be deploying this stack. Typically this soluton will be deployed into some sort of shared services environment as connectivity back to the Rubrik is required.
 
-### `deploy_lambda_function.cform` takes the following parameters:
+**`deploy_lambda_function.cform` takes the following parameters:**
 
 #### Lambda Function Source Parameters
 Parameter | Description
@@ -108,6 +104,7 @@ iamaccesskey| Access key currently used to by iamuser (created in step 4, must m
 iamsecretkey | Secret key currently used to by iamuser (created in step 4) | th1s1sAn3xampl3k3yfR0MAWS
 
 ### Execute the following steps for each of your protected AWS accounts in the hub account to enable and test rotation
+
 1. In the hub account, select store a new secret in Secrets Manager
 2. Select other types of secrets and toggle the view to plaintext
 3. Paste in the appropriate template from this repo (Hub/Spoke)
