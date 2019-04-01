@@ -1,8 +1,10 @@
-# Quick Start Guide: AWS Secrets Manager Key Rotation for Rubrik Native Protection
+# Quick Start Guide: AWS Secrets Manager Key Rotation for Rubrik EC2 Native Protection
 
-Rubrik’s API first architecture enables organizations to embrace and integrate Rubrik functionality into their existing automation processes. Many AWS consumers prefer to manage the rotation secrets via the AWS Secrets Manager service.
+Rubrik’s API first architecture enables organizations to embrace and integrate Rubrik functionality into their existing automation processes. This includes integration with services offered by public cloud providers such as Amazon Web Services, Google Cloud Platform, and Microsoft Azure. 
 
-This solution is designed to allow customers to quickly deploy an architecture that provides IAM credential rotation for  Rubrik EC2 Native protection across multiple AWS accounts. The diagram below logically describes a fully deployed deployed environment with a "Hub" account that that contains the rotation logic for all "Spoke" accounts protected by Rubrik.
+One such public cloud service is Amazon EC2 and it's native capabilities for protecting cloud instances using Amazon EBS snapshots. Rubrik CDM integrates with Amazon EC2 APIs to provide simple and unified management of Amazon EBS snapshots across multiple AWS Regions and AWS accounts. This Rubrik EC2 Native Protection requires Rubrik CDM to assume the identity of an IAM user, with sufficient permissions, in each account that is to be under management; this speical identity is analogous to the "service account" used in traditional management software. Assuming the identity of these special IAM users require Rubrik CDM to have access to their access keys.
+
+Many AWS consumers prefer to manage the rotation of secrets, such as IAM credentials, via a secrets manager such as the AWS Secrets Manager service. This solution is designed to allow customers to quickly deploy an architecture that provides IAM credential rotation for  Rubrik EC2 Native protection across multiple AWS accounts. The diagram below logically describes a fully deployed deployed environment with a "Hub" account that contains the rotation logic for all "Spoke" accounts protected by Rubrik.
 
 
 ![image](https://user-images.githubusercontent.com/16825470/54544748-a2ee3700-4976-11e9-9594-d63569fe3b4b.png)
@@ -17,7 +19,7 @@ Deployment of the solution consists of the following steps, which are covered in
 
 ## 1. Deploy the rotation logic and IAM assets into your hub account using `deploy_lambda_function.cform`
 
-Using `deploy_lambda_function.cform`, deploy a CloudFormation Stack into the desired region in your hub account. You will need to download the latest `rk_secret_rotator.zip` from the [releases section of this repository](https://github.com/rubrikinc/aws-native-secrets-rotation/releases) and place it in an S3 
+Using `deploy_lambda_function.cform`, deploy a CloudFormation Stack into the desired region in your hub account. You will need to download the latest `rk_secret_rotator.zip` from the [releases section of this repository](https://github.com/rubrikinc/aws-native-secrets-rotation/releases) and place it in an Amazon S3 
 bucket in the same region where you will be deploying this stack. Typically this soluton will be deployed into some sort of shared services environment as connectivity back to the Rubrik is required.
 
 **`deploy_lambda_function.cform` takes the following parameters:**
@@ -84,7 +86,7 @@ Using the AWS console, or the following AWS CLI command: `aws iam create-access-
 2. Click on the settings/gear icon in the top right hand corner of the Rubrik console
 3. Choose Cloud Sources
 4. Click the plus sign to add a cloud source
-5. Enter the access key and secret key for the AWS account you are protecting
+5. Enter the access key ID and secret access key for the AWS account you are protecting
 6. Select the regions you wish to protect
 7. Configure file level indexing (if applicable)
 8. Click Add
