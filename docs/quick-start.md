@@ -25,34 +25,38 @@ bucket in the same region where you will be deploying this stack. Typically this
 **`deploy_lambda_function.cform` takes the following parameters:**
 
 **Lambda Function Source Parameters**
-Parameter | Description
------------- | -------------
-lambdaBucketName | Name of the S3 bucket containing rk_secret_rotator.zip, must be in the same region as the target for this stack deployment.
-lambdaZipName | Name of the lambda function zip file inside the S3 bucket, defaults to rk_secret_rotator.zip.
+
+| Parameter | Description |
+| ------------- | ------------- |
+| lambdaBucketName | Name of the S3 bucket containing rk_secret_rotator.zip, must be in the same region as the target for this stack deployment.  |
+| lambdaZipName | Name of the lambda function zip file inside the S3 bucket, defaults to rk_secret_rotator.zip. |
 
 **Lambda Execution VPC Parameters**
-Parameter | Description
------------- | -------------
-lambdaVpcId | VPC that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.
-lambdaSubnet1 | First subnet that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.
-lambdaSubnet2 | Second subnet that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.
-lambdaSsecurityGroup | Security group that the lambda function will use for execution, must allow connectivity back to Rubrik on 443 as well as connectivity to the secrets manager and IAM API endpoints.
+
+| Parameter | Description |
+|------------ | -------------|
+|lambdaVpcId | VPC that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.|
+|lambdaSubnet1 | First subnet that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.|
+|lambdaSubnet2 | Second subnet that the lambda function will use for execution, must have connectivity back to Rubrik on 443 via VPN, DirectConnect, or VPC Peering as well as connectivity to the secrets manager and IAM API endpoints.|
+|lambdaSsecurityGroup | Security group that the lambda function will use for execution, must allow connectivity back to Rubrik on 443 as well as connectivity to the secrets manager and IAM API endpoints.|
 
 **Rubrik Specific Parameters**
-Parameter | Description
------------- | -------------
-localRubrikIAMUser | Name of the Rubrik IAM user for THIS AWS account (assumes we are protecting the hub account as well).
-RubrikCDMHostname | Hostname or IP address of the Rubrik cluster we will be rotating EC2 Native Protection Secrets on.
-RubrikCDMUsername | Username used to connect to the Rubrik API.
-RubrikSecretKMSKey | KMS Key ARN that will be used to encrypt the Rubrik CDM credentials in secrets manager.
+
+| Parameter | Description |
+|------------ | -------------|
+|localRubrikIAMUser | Name of the Rubrik IAM user for THIS AWS account (assumes we are protecting the hub account as well).|
+|RubrikCDMHostname | Hostname or IP address of the Rubrik cluster we will be rotating EC2 Native Protection Secrets on. |
+|RubrikCDMUsername | Username used to connect to the Rubrik API. |
+|RubrikSecretKMSKey | KMS Key ARN that will be used to encrypt the Rubrik CDM credentials in secrets manager.|
 
 **`deploy_lambda_function.cform` produces the following outputs:**
 
 **Stack Outputs**
-Output | Description
------------- | -------------
-rubrikec2tagfunctionARN | ARN of the Lambda function created
-rubrikEc2SecretRotatorRoleARN | ARN of the role created for lambda
+
+|Output | Description|
+|------------ | -------------|
+|rubrikec2tagfunctionARN | ARN of the Lambda function created|
+|rubrikEc2SecretRotatorRoleARN | ARN of the role created for lambda|
 
 **Add password to `/rubrik/rubrik_cdm_credentials` in Secrets Manager**
 Once the stack has been created, you will need to add the password for your rubrik cluster to `/rubrik/rubrik_cdm_credentials` in secrets manager. Simply browse to the newly created secret inside of the Secrets Manager console, then populate the `rubrikpassword` value with the appropriate password.
@@ -65,18 +69,20 @@ Using `deploy_crossaccount_role.cform`, deploy a CloudFormation Stack into the d
 **`deploy_crossaccount_role.cform` takes the following parameters:**
 
 **IAM Parameters**
-Parameter | Description
------------- | -------------
-IAMusername | Name of the Rubrik IAM user for to be provisioned in this account
-SourceAccount | Account number of the source account for key rotation (hub account)
+
+|Parameter | Description|
+|------------ | -------------|
+|IAMusername | Name of the Rubrik IAM user for to be provisioned in this account|
+|SourceAccount | Account number of the source account for key rotation (hub account)|
 
 **`deploy_crossaccount_role.cform` produces the following outputs:**
 
 **Stack Outputs**
-Output | Description
------------- | -------------
-rubrikEc2SecretRotatorRoleARN | ARN of IAM role used to rotate credentials on Rubrik IAM User
-rubrikEc2ProtectionUserARN | ARN of IAM user used for Rubrik EC2 Native Protection
+
+|Output | Description|
+|------------ | -------------|
+|rubrikEc2SecretRotatorRoleARN | ARN of IAM role used to rotate credentials on Rubrik IAM User|
+|rubrikEc2ProtectionUserARN | ARN of IAM user used for Rubrik EC2 Native Protection|
 
 ## 3. Create IAM access keys for each hub and spoke IAM user
 Using the AWS console, or the following AWS CLI command: `aws iam create-access-key --user-name username` create access keys for each of the IAM users that will be used for EC2 native protection via Rubrik. By default, this will be **rubrikEc2ProtectionUser** in your spoke accounts and will be the user you specified in the **localRubrikIAMUser** parameter in Step 1. Store these keys in a secure location for use in the next step.
@@ -97,13 +103,14 @@ Using the AWS console, or the following AWS CLI command: `aws iam create-access-
 Once you have the Cloud Sources added to Rubrik, we can configure rotation via secrets manager. The simplest way to accomplish this is using secret templates in this repo. Examples for the [Hub Account Secret](../local_account_secret_example.json) and for the [Spoke Account Secrets](../assumerole_cross_account_secret_example.json) are available in this repo. 
 
 **Each Secret Consists of the following parameters:**
-Paramter | Description | Example Value
-----------| ------------------------------------------------------|-------------
-accountid |  Account number of the AWS account we are protecting. | 123456789012
-rolearn (spoke only) |  ARN of the role created in the spoke account for rotation, available as output rubrikEc2SecretRotatorRoleARN from deploy_crossaccount_role.cform | arn:aws:iam::123456789012:role/rubrik_ec2_crossaccount_role
-iamuser | Name of the IAM user used to protect this AWS account | example-username
-iamaccesskey| Access key currently used to by iamuser (created in step 4, must match cloud source in rubrik or rotation will fail) | ABCDEFGHIJKLMNOPQRST
-iamsecretkey | Secret key currently used to by iamuser (created in step 4) | th1s1sAn3xampl3k3yfR0MAWS
+
+|Paramter | Description | Example Value|
+|----------| ------------------------------------------------------|-------------|
+|accountid |  Account number of the AWS account we are protecting. | 123456789012|
+|rolearn (spoke only) |  ARN of the role created in the spoke account for rotation, available as output rubrikEc2SecretRotatorRoleARN from deploy_crossaccount_role.cform | arn:aws:iam::123456789012:role/rubrik_ec2_crossaccount_role|
+|iamuser | Name of the IAM user used to protect this AWS account | example-username|
+|iamaccesskey| Access key currently used to by iamuser (created in step 4, must match cloud source in rubrik or rotation will fail) | ABCDEFGHIJKLMNOPQRST|
+|iamsecretkey | Secret key currently used to by iamuser (created in step 4) | th1s1sAn3xampl3k3yfR0MAWS|
 
 **Execute the following steps for each of your protected AWS accounts in the hub account to enable and test rotation**
 
